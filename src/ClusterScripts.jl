@@ -148,7 +148,7 @@ function loadbalance_queue(target_function, input_list::Vector{Dict}; trajectori
         # Run a short version of whatever job to force target_function to precompile
         short_params=copy(active_simulation_queue[1])
         short_params["runtime"]=short_params["timestep"]
-        @everywhere target_function(short_params)
+        pmap(target_function, [short_params for i in eachindex(workers())])
     end
     @info "Now starting simulation queue:"
     # Target function must provide output as Tuples (output from run_dynamics, input data)
