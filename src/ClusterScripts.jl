@@ -148,6 +148,7 @@ function loadbalance_queue(target_function, input_list::Vector{Dict}; trajectori
         # Run a short version of whatever job to force target_function to precompile
         short_params=copy(active_simulation_queue[1])
         short_params["runtime"]=short_params["timestep"]
+        short_params["saveat"]=short_params["timestep"]
         pmap(target_function, [short_params for i in eachindex(workers())])
     end
     @info "Now starting simulation queue:"
@@ -203,7 +204,6 @@ function merge_results(simulation_output;trajectories_key="trajectories", ensemb
     return simulation_output
 end
 
-
 """
     build_job_queue(fixed_parameters::Dict, variables::Dict)
     Returns a Vector of all unique combinations of values in `variables` merged with `fixed_parameters`. 
@@ -234,6 +234,29 @@ function build_job_queue(fixed_parameters::Dict, variables::Dict, postprocessing
     return map(postprocessing_function,merged_combinations)
 end
 
-export loadbalance_run_dynamics,build_job_queue, merge_results, loadbalance_queue
+function serialise_queue!(input_dict_tensor::AbstractArray{Dict}; trajectories_key="trajectories", filename="simulation_parameters.jld2")
+    queue=[] #Empty queue array to fill with views of input_dict_tensor
+    for index in eachindex(input_dict_tensor)
+        if get!(input_dict_tensor[index],"batchsize",1)==1
+            # Case 1: Fully serialised operation - Split into as many jobs as trajectories. 
+            for trj in 1:input_dict_tensor[index][trajectories_key]
+                push!(queue, view(input_dict_tensor, index))
+            end
+            input_dict_tensor[index][trajectories_key]=1
+        else 
+            # Case 2: Larger batch size - There might be some benefit like multithreading, so split into chunks of a certain size. 
+            for batch in 2:(floor(input_dict_tensor[index][trajectories_key]/input_dict_tensor[index]["batchsize"]))
+                push!(queue, view(input_dict_tensor, index))
+            end
+            extra_parameters=input_dict_tensor[index]
+            extra_parameters[trajectories_key]+=input_dict_tensor[index][trajectories_key]%input_dict_tensor[index]["batchsize"]
+            input_dict_tensor[index][trajectories_key]=floor(input_dict_tensor[index][trajectories_key]/input_dict_tensor[index]["batchsize"])
+            push!(queue, extra_parameters) # This covers any cases where the number of trajectories isn't exactly divisible by the number of tasks. 
+        end
+    end
+    jldsave(filename; parameters=input_dict_tensor, queue=queue)
+end
+
+export loadbalance_run_dynamics,build_job_queue, merge_results, loadbalance_queue, serialise_queue!
 
 end
