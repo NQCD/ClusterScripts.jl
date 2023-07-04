@@ -1,7 +1,7 @@
 name = "ClusterScripts"
 uuid = "0afbe08e-4e50-452c-a3af-5975c91048e8"
 authors = ["Alexander Spears <alexander.spears@warwick.ac.uk> and contributors"]
-version = "0.5.1-DEV"
+version = "0.5.8"
 
 [deps]
 DiffEqBase = "2b5f629d-d688-5b77-993f-72d75c75574e"

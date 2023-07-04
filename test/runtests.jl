@@ -20,7 +20,7 @@ using DiffEqBase
             return ([1],x)
         end
     end
-    traj_after=loadbalance_queue(driver, build_job_queue(test_parameters,variables))
+    traj_after=pmap_queue(driver, build_job_queue(test_parameters,variables))
     @test length(traj_after)==(10*11)
     for i in eachindex(traj_after)
         @test traj_after[i][2]["trajectories"]==100
