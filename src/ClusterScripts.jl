@@ -155,7 +155,7 @@ function merge_file_results(output_filename::String, glob_pattern::String, queue
             if !isassigned(output_tensor, index)
                 output_tensor[index]=file_results
             else
-                output_tensor[index]=push_nqcd_outputs!(output_tensor[index]..., file_results; trajectories_key=trajectories_key)
+                output_tensor[index]=push_nqcd_outputs!(output_tensor[index], [file_results]; trajectories_key=trajectories_key)
             end
             update(progress)
         end
