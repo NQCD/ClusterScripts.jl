@@ -174,7 +174,7 @@ end
     Like a push!() function, but it also puts `first_output` into a vector if it wasn't already and adds the number of trajectories together.  
 TBW
 """
-function push_nqcd_outputs!(first_output, other_outputs...; trajectories_key="trajectories")
+function push_nqcd_outputs!(first_output, other_outputs; trajectories_key="trajectories")
     for i in other_outputs
         for (k,v) in i[2]
             if k==trajectories_key
