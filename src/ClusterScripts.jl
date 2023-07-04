@@ -149,7 +149,7 @@ function merge_file_results(output_filename::String, glob_pattern::String, queue
     output_tensor=Array{Tuple}(undef, (size(simulation_parameters["parameters"])))
     # Go through each element in the input tensor and collect all jobs we have for it. 
     for index in eachindex(simulation_parameters["parameters"])
-        to_read=findall(x->split(x.name, "_")[end] in simulation_parameters["parameters"][index]["job_ids"], all_files)
+        to_read=findall(x->split(x.name, "_")[end] in map(string,simulation_parameters["parameters"][index]["job_ids"]), all_files)
         for file_index in to_read
             file_results=jldopen(all_files[file_index].path)["results"]
             if !isassigned(output_tensor, index)
@@ -160,11 +160,12 @@ function merge_file_results(output_filename::String, glob_pattern::String, queue
             update(progress)
         end
         # Trajectory completeness check
-        if output_tensor[index][2]["total_trajectories"]!=output_tensor[index][2]["trajectories"]
+        if !isassigned(output_tensor, index) && output_tensor[index][2]["total_trajectories"]!=output_tensor[index][2]["trajectories"]
             @warn "Simulation results are incomplete. Make sure you have run all sub-jobs. "
         end
     end
     jldsave(output_filename; results=output_tensor)
+    return output_tensor
 end
 
 """
