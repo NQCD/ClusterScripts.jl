@@ -5,6 +5,8 @@ using Distributed
 using DiffEqBase
 using JLD2
 using RobustPmap
+using Glob
+using ProgressBars
 
 
 """
@@ -122,6 +124,49 @@ function merge_pmap_results(simulation_output::AbstractArray;trajectories_key="t
     return simulation_output
 end
 
+function merge_file_results(output_filename::String, glob_pattern::String, queue_file::String;trajectories_key="trajectories")
+    # Make a struct for common file actions
+    struct SimulationFile
+        path::String
+        stem::String
+        name::String
+        with_extension::String
+        function SimulationFile(full_path::String;path_delim="/")
+            split_path=split(full_path, path_delim)
+            stem=join(split_path[1:end-1], path_delim)*path_delim
+            with_extension=split_path[end]
+            name=join(split(with_extension, ".")[1:end-1], ".")
+            new(full_path, stem, name, with_extension)
+        end
+    end
+    # Read in all files for a simulation queue.
+    all_files=map(SimulationFile,glob(glob_pattern))
+    progress=ProgressBar(total=length(all_files), printing_delay=1.0)
+    set_description(progress, "Processing files: ")
+    # Import simulation parameters
+    simulation_parameters=jldopen(queue_file)
+    # Create an empty total output object
+    output_tensor=Array{Tuple}(undef, (size(simulation_parameters["parameters"])))
+    # Go through each element in the input tensor and collect all jobs we have for it. 
+    for index in eachindex(simulation_parameters["parameters"])
+        to_read=findall(x->split(x.name, "_")[end] in simulation_parameters["parameters"][index]["job_ids"], all_files)
+        for file_index in to_read
+            file_results=jldopen(all_files[file_index].path)["results"]
+            if !isassigned(output_tensor, index)
+                output_tensor[index]=file_results
+            else
+                output_tensor[index]=push_nqcd_outputs!(output_tensor[index]..., file_results; trajectories_key=trajectories_key)
+            end
+            update(progress)
+        end
+        # Trajectory completeness check
+        if output_tensor[index][2]["total_trajectories"]!=output_tensor[index][2]["trajectories"]
+            @warn "Simulation results are incomplete. Make sure you have run all sub-jobs. "
+        end
+    end
+    jldsave(output_filename; results=output_tensor)
+end
+
 """
     push_nqcd_outputs!!(first_output, other_outputs...)
 
@@ -214,6 +259,6 @@ function serialise_queue!(input_dict_tensor::AbstractArray{Dict}; trajectories_k
     jldsave(filename; parameters=input_dict_tensor, queue=queue)
 end
 
-export pmap_queue,build_job_queue, merge_pmap_results, serialise_queue!, push_nqcd_outputs!
+export pmap_queue,build_job_queue, merge_pmap_results, merge_file_results, serialise_queue!, push_nqcd_outputs!
 
 end
