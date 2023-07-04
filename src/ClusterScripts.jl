@@ -8,6 +8,19 @@ using RobustPmap
 using Glob
 using ProgressBars
 
+struct SimulationFile
+    path::String
+    stem::String
+    name::String
+    with_extension::String
+    function SimulationFile(full_path::String;path_delim="/")
+        split_path=split(full_path, path_delim)
+        stem=join(split_path[1:end-1], path_delim)*path_delim
+        with_extension=split_path[end]
+        name=join(split(with_extension, ".")[1:end-1], ".")
+        new(full_path, stem, name, with_extension)
+    end
+end
 
 """
     pmap_queue(target_function::Function, input_list::Vector{Dict}; trajectories_key="trajectories", ensemble_key="ensemble_algorithm", tmp_dir="tmp/", checkpoint_frequency=0, sort_variable="")
@@ -126,19 +139,6 @@ end
 
 function merge_file_results(output_filename::String, glob_pattern::String, queue_file::String;trajectories_key="trajectories")
     # Make a struct for common file actions
-    struct SimulationFile
-        path::String
-        stem::String
-        name::String
-        with_extension::String
-        function SimulationFile(full_path::String;path_delim="/")
-            split_path=split(full_path, path_delim)
-            stem=join(split_path[1:end-1], path_delim)*path_delim
-            with_extension=split_path[end]
-            name=join(split(with_extension, ".")[1:end-1], ".")
-            new(full_path, stem, name, with_extension)
-        end
-    end
     # Read in all files for a simulation queue.
     all_files=map(SimulationFile,glob(glob_pattern))
     progress=ProgressBar(total=length(all_files), printing_delay=1.0)
