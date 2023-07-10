@@ -20,9 +20,13 @@ using DiffEqBase
             return ([1],x)
         end
     end
-    traj_after=pmap_queue(driver, build_job_queue(test_parameters,variables))
-    @test length(traj_after)==(10*11)
-    for i in eachindex(traj_after)
-        @test traj_after[i][2]["trajectories"]==100
+    tq=build_job_queue(test_parameters,variables)
+    serialise_queue!(tq;filename="test_queue.jld2")
+    queue=jldopen("test_queue.jld2")["queue"]
+    @test length(queue)==(10*11)
+    total_trj=0
+    for i in eachindex(queue)
+        total_trj+queue[i]["trajectories"]
     end
+    @test total_trj==length(queue)
 end
