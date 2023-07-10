@@ -224,7 +224,7 @@ function build_job_queue(fixed_parameters::Dict, variables::Dict, postprocessing
     return map(postprocessing_function,merged_combinations)
 end
 
-function serialise_queue!(input_dict_tensor::Vector{Dict}; trajectories_key="trajectories", filename="simulation_parameters.jld2")
+function serialise_queue!(input_dict_tensor<:AbstractVector; trajectories_key="trajectories", filename="simulation_parameters.jld2")
     queue=[] #Empty queue array to fill with views of input_dict_tensor
     job_id=1
     for index in eachindex(input_dict_tensor)
