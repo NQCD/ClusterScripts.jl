@@ -161,7 +161,7 @@ function merge_file_results(output_filename::String, glob_pattern::String, queue
         end
         # Trajectory completeness check
         if !isassigned(output_tensor, index) && output_tensor[index][2]["total_trajectories"]!=output_tensor[index][2]["trajectories"]
-            @warn "Simulation results are incomplete. Make sure you have run all sub-jobs. "
+            @warn "Simulation results are incomplete or oversubscribed. Make sure you have run all sub-jobs. "
         end
     end
     jldsave(output_filename; results=output_tensor)
@@ -224,7 +224,7 @@ function build_job_queue(fixed_parameters::Dict, variables::Dict, postprocessing
     return map(postprocessing_function,merged_combinations)
 end
 
-function serialise_queue!(input_dict_tensor::AbstractArray{Dict}; trajectories_key="trajectories", filename="simulation_parameters.jld2")
+function serialise_queue!(input_dict_tensor::Vector{Dict}; trajectories_key="trajectories", filename="simulation_parameters.jld2")
     queue=[] #Empty queue array to fill with views of input_dict_tensor
     job_id=1
     for index in eachindex(input_dict_tensor)
