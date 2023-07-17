@@ -160,7 +160,7 @@ function merge_file_results(output_filename::String, glob_pattern::String, queue
             update(progress)
         end
         # Trajectory completeness check
-        if !isassigned(output_tensor, index) && output_tensor[index][2]["total_trajectories"]!=output_tensor[index][2]["trajectories"]
+        if !isassigned(output_tensor, index) || output_tensor[index][2]["total_trajectories"]!=output_tensor[index][2]["trajectories"]
             @warn "Simulation results are incomplete or oversubscribed. Make sure you have run all sub-jobs. "
         end
     end
