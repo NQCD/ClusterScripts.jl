@@ -248,7 +248,7 @@ function serialise_queue!(input_dict_tensor::Vector{<: Dict{<: Any}}; trajectori
             # Work in batchsize chunks
             input_dict_tensor[index][trajectories_key]=input_dict_tensor[index]["batchsize"]
             # If there enough trajectories to fit in >1 batch:
-            for batch in 2:(floor(input_dict_tensor[index][trajectories_key]/input_dict_tensor[index]["batchsize"]))
+            for batch in 2:(floor(input_dict_tensor[index]["total_trajectories"]/input_dict_tensor[index]["batchsize"]))
                 push!(queue, view(input_dict_tensor, index))
                 push!(input_dict_tensor[index]["job_ids"], job_id)
                 job_id+=1
