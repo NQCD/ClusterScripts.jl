@@ -246,7 +246,7 @@ function serialise_queue!(input_dict_tensor::Vector{<: Dict{<: Any}}; trajectori
         else 
             # Case 2: Larger batch size - There might be some benefit like multithreading, so split into chunks of a certain size. 
             # Work in batchsize chunks
-            input_dict_tensor[index][trajectories_key]=floor(input_dict_tensor[index][trajectories_key]/input_dict_tensor[index]["batchsize"])
+            input_dict_tensor[index][trajectories_key]=input_dict_tensor[index]["batchsize"]
             # If there enough trajectories to fit in >1 batch:
             for batch in 2:(floor(input_dict_tensor[index][trajectories_key]/input_dict_tensor[index]["batchsize"]))
                 push!(queue, view(input_dict_tensor, index))
