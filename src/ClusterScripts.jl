@@ -167,7 +167,7 @@ function merge_file_results(output_filename::String, glob_pattern::String, queue
         end
     end
     jldsave(output_filename; results=output_tensor)
-    return output_tensor
+    return reshape(output_tensor, size(simulation_parameters["parameters"]))
 end
 
 """
