@@ -6,30 +6,28 @@ This package contains functions to more efficiently distribute resources to MD s
 
 
 While NQCDynamics.jl provides the tools necessary to run ensemble simulations, and a means of parallelisation through SciML’s EnsembleAlgorithms, compatibility of different models with certain EnsembleAlgorithms isn’t guaranteed, nor will there necessarily be a notable gain in performance. ClusterScripts takes a different approach to parallelisation, instead running multiple instances of NQCD in parallel, allowing for more trajectories to be run simultaneously, which is advantageous for models not taking full advantage of multithreading. 
-%%Maybe the image I was planning to put in groupdocs%%
 
 To maximise compatibility with (almost) any simulation workflow, it is up to you as a user to implement the necessary functions acting on the jobs dispatched by ClusterScripts. 
 
 ## The ClusterScripts simulation workflow
-```mermaid
-flow tb:
-	”fixed_parameters::Dict” --> build_job_queue()
-	”variables::Dict” --> b
-```
-
 All the information necessary to run a simulation is contained in Dictionaries. 
 `fixed_parameters` contains all keys common to every simulation. 
 `variables` should contain variable keys with the desired vector of values. 
 
-`build_job_queue(fixed_parameters,variables)` will generate all possible combinations of variables, building a `Vector{Dict}` of all combinations of input parameters. 
+`build_job_queue(fixed_parameters,variables)` will generate all possible combinations of variables, building an `Array{Dict}` of all combinations of input parameters. 
 
-`loadbalance_queue(target_function, params::Vector{Dict})` takes each set of initial conditions and splits them into “jobs” best suited for the provided computational resources. 
-
+`pmap_queue(target_function, params::Vector{Dict})` executes the all simulations for a set of parameters and uses **Julia's built in Multitasking/Multiprocessing functions** to split simulations into subtasks according to the desired mode of parallelisation. 
 If we specify a large number of trajectories for a model best suited to single-process single-thread operation, they will be split into smaller “jobs” which are dispatched to each process for maximum use of available computing power. 
 
 In cases where models use multithreading properly, “jobs” are still split across the total number of processes, but continue to use multithreading. 
 
 `target_function` will be run for each combination of `params` and the results will be automatically merged back into the same shape as the `Vector{Dict}` initially input, as if we had run all trajectories within a single script. 
+
+
+`serialise_queue!(input_dict_tensor::Vector{<: Dict{<: Any}}; trajectories_key="trajectories", filename="simulation_parameters.jld2")` will split the simulation queue provided into batches of a given size, which can be separately executed in parallel, e.g. using GNU parallel for trivial taskfarming. Each sub-job will create a temporary output file, which will need to be merged. 
+
+`merge_file_results(output_filename::String, glob_pattern::String, queue_file::String;trajectories_key="trajectories")` will combine output files from sub-jobs of a larger simulation task (e.g. those created by `serialise_queue!`) back into a single output file containing an `Array` with variable dimensions, combining batches with the same parameters back together. 
+
 
 ## What does my simulation function need to do?
 - Initialise an NQCD Model, Simulation and initial conditions from parameters contained in a single input `Dict`. 
