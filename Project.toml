@@ -12,6 +12,7 @@ ProgressBars = "49802e3a-d2f1-5c88-81d8-b72133a6f568"
 RobustPmap = "27aeedcb-f738-516b-a0b8-3211cf1146e5"
 
 [compat]
+JLD2 = "0.4"
 DiffEqBase = "6"
 julia = "1.6.2"
 
