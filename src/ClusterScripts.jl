@@ -226,6 +226,18 @@ function build_job_queue(fixed_parameters::Dict, variables::Dict, postprocessing
     return map(postprocessing_function,merged_combinations)
 end
 
+"""
+    serialise_queue!(input_dict_tensor::Vector{<: Dict{<: Any}}; trajectories_key="trajectories", filename="simulation_parameters.jld2")
+
+Performs batching on the tensor of input parameters for multithreading/multiprocessing. 
+By assigning the key "batchsize" in the input parameters, each simulation job will be split into as many batches as necessary to run the required number of trajectories. 
+The default batch size is 1, i.e. trivial taskfarming. 
+
+Set "trajectories_key" in case jobs should be split by something different. 
+
+Set "filename" to save the resulting batch queue somewhere different than `simulation_parameters.jld2`. 
+
+"""
 function serialise_queue!(input_dict_tensor::Vector{<: Dict{<: Any}}; trajectories_key="trajectories", filename="simulation_parameters.jld2")
     queue=[] #Empty queue array to fill with views of input_dict_tensor
     job_id=1
