@@ -1,7 +1,7 @@
 name = "ClusterScripts"
 uuid = "0afbe08e-4e50-452c-a3af-5975c91048e8"
 authors = ["Alexander Spears <alexander.spears@warwick.ac.uk> and contributors"]
-version = "0.6.0"
+version = "0.6.1"
 
 [deps]
 DiffEqBase = "2b5f629d-d688-5b77-993f-72d75c75574e"
@@ -13,7 +13,6 @@ RobustPmap = "27aeedcb-f738-516b-a0b8-3211cf1146e5"
 
 [compat]
 RobustPmap = "1"
-JLD2 = "0.4"
 DiffEqBase = "6"
 julia = "1.6.2"
 
