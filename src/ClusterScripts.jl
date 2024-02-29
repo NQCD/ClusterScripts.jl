@@ -137,7 +137,30 @@ function merge_pmap_results(simulation_output::AbstractArray;trajectories_key="t
     return simulation_output
 end
 
-function merge_file_results(output_filename::String, glob_pattern::String, queue_file::String;trajectories_key="trajectories")
+"""
+    merge_file_results(output_filename::String, glob_pattern::String, queue_file::String;trajectories_key="trajectories", truncate_times=true)
+
+Compresses all results from a simulation queue back into a single file. Any missing outputs are reported as warnings and will be undefined in the final output. 
+
+This file contains the results of all jobs in the queue, as well as the input parameters for each job in the following format:
+
+- `file["results"]` contains an Array with the same dimensions as the input parameters.
+- Each element of `file["results"]` contains a tuple of the output from the simulation and the input parameters for that simulation.
+- Simulation output will always be a vector, even for single trajectories, to allow for consistent analysis functions that are independent of trajectory numbers. 
+
+
+**Arguments**
+`output_filename::String`: The name of the file to save the results to.
+
+`glob_pattern::String`: A glob pattern to match all files to merge.
+
+`queue_file::String`: The file containing the input parameters for the simulation queue.
+
+`trajectories_key::String`: The key in the input parameters dictionary which describes batching behaviour. (typically "trajectories", since we want to farm out trajectories to workers)
+
+`truncate_times::Bool`: If true, the time array in the output will be truncated to the final value only. Useful to save space when a large number of identical trajectories are run with short time steps. 
+"""
+function merge_file_results(output_filename::String, glob_pattern::String, queue_file::String;trajectories_key="trajectories", truncate_times=true)
     # Make a struct for common file actions
     # Read in all files for a simulation queue.
     all_files=map(SimulationFile,glob(glob_pattern))
@@ -154,6 +177,17 @@ function merge_file_results(output_filename::String, glob_pattern::String, queue
             @debug "Attempting to read $(all_files[file_index].path)"
             file_results=jldopen(all_files[file_index].path)["results"]
             @debug "File read successfully"
+            # Truncate time arrays if requested
+            if truncate_times
+                if isa(file_results[1], Vector)
+                    for i in eachindex(file_results)
+                        file_results[1][i][:Time]=file_results[1][i][:Time][end]
+                    end
+                else
+                    file_results[:Time]=file_results[:Time][end]
+                end
+            end
+            # Move data to the output tensor
             if !isassigned(output_tensor, index)
                 output_tensor[index]=file_results
             else
@@ -166,7 +200,7 @@ function merge_file_results(output_filename::String, glob_pattern::String, queue
             @warn "Simulation results are incomplete or oversubscribed. Make sure you have run all sub-jobs. "
         end
     end
-    jldsave(output_filename; results=output_tensor)
+    jldsave(output_filename, compress=true; results=reshape(output_tensor, size(simulation_parameters["parameters"])))
     return reshape(output_tensor, size(simulation_parameters["parameters"]))
 end
 
