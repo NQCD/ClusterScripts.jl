@@ -180,7 +180,7 @@ function merge_file_results(output_filename::String, glob_pattern::String, queue
             # Truncate time arrays if requested
             if truncate_times
                 if isa(file_results[1], Vector)
-                    for i in eachindex(file_results)
+                    for i in eachindex(file_results[1])
                         file_results[1][i][:Time]=file_results[1][i][:Time][end]
                     end
                 else
