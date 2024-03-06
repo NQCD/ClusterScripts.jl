@@ -160,7 +160,7 @@ This file contains the results of all jobs in the queue, as well as the input pa
 
 `truncate_times::Bool`: If true, the time array in the output will be truncated to the final value only. Useful to save space when a large number of identical trajectories are run with short time steps. 
 """
-function merge_file_results(output_filename::String, glob_pattern::String, queue_file::String;trajectories_key="trajectories", truncate_times=true)
+function merge_file_results(output_filename::String, glob_pattern::String, queue_file::String;trajectories_key="trajectories", truncate_times=true, save=true)
     # Make a struct for common file actions
     # Read in all files for a simulation queue.
     all_files=map(SimulationFile,glob(glob_pattern))
@@ -200,7 +200,7 @@ function merge_file_results(output_filename::String, glob_pattern::String, queue
             @warn "Simulation results are incomplete or oversubscribed. Make sure you have run all sub-jobs. "
         end
     end
-    jldsave(output_filename, compress=true; results=reshape(output_tensor, size(simulation_parameters["parameters"])))
+    save ? jldsave(output_filename, compress=true; results=reshape(output_tensor, size(simulation_parameters["parameters"]))) : nothing
     return reshape(output_tensor, size(simulation_parameters["parameters"]))
 end
 
