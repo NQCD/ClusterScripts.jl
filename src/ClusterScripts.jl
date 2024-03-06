@@ -177,16 +177,6 @@ function merge_file_results(output_filename::String, glob_pattern::String, queue
             @debug "Attempting to read $(all_files[file_index].path)"
             file_results=jldopen(all_files[file_index].path)["results"]
             @debug "File read successfully"
-            # Truncate time arrays if requested
-            if truncate_times
-                if isa(file_results[1], Vector)
-                    for i in eachindex(file_results)
-                        file_results[1][i][:Time]=file_results[1][i][:Time][end]
-                    end
-                else
-                    file_results[:Time]=file_results[:Time][end]
-                end
-            end
             # Move data to the output tensor
             if !isassigned(output_tensor, index)
                 output_tensor[index]=file_results
