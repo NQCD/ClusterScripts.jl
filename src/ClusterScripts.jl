@@ -174,20 +174,24 @@ function merge_file_results(output_filename::String, glob_pattern::String, queue
     for index in eachindex(simulation_parameters["parameters"])
         to_read=findall(x->split(x.name, "_")[end] in map(string,simulation_parameters["parameters"][index]["job_ids"]), all_files)
         for file_index in to_read
-            @debug "Attempting to read $(all_files[file_index].path)"
-            file_results=jldopen(all_files[file_index].path)["results"]
-            @debug "File read successfully"
-            # Move data to the output tensor
-            if !isassigned(output_tensor, index)
-                output_tensor[index]=file_results
-            else
-                output_tensor[index]=push_nqcd_outputs!(output_tensor[index], [file_results]; trajectories_key=trajectories_key)
+            try
+                file_results=jldopen(all_files[file_index].path)["results"]
+                @debug "File read successfully"
+                # Move data to the output tensor
+                if !isassigned(output_tensor, index)
+                    output_tensor[index]=file_results
+                else
+                    output_tensor[index]=push_nqcd_outputs!(output_tensor[index], [file_results]; trajectories_key=trajectories_key)
+                end
+            catch
+                @warn "File $(all_files[file_index].name) could not be read. It may be incomplete or corrupted."
+                continue
             end
             update(progress)
         end
         # Trajectory completeness check
         if !isassigned(output_tensor, index) || output_tensor[index][2]["total_trajectories"]!=output_tensor[index][2]["trajectories"]
-            @warn "Simulation results are incomplete or oversubscribed. Make sure you have run all sub-jobs. "
+            @info "Simulation results are incomplete or oversubscribed in results[$(index)]. Make sure you have run all sub-jobs. "
         end
     end
     save ? jldsave(output_filename, compress=true; results=reshape(output_tensor, size(simulation_parameters["parameters"]))) : nothing
