@@ -321,6 +321,6 @@ function serialise_queue!(input_dict_tensor::Vector{<: Dict{<: Any}}; trajectori
     jldsave(filename; parameters=input_dict_tensor, queue=queue)
 end
 
-export pmap_queue,build_job_queue, merge_pmap_results, merge_file_results, serialise_queue!, push_nqcd_outputs!
+export pmap_queue,build_job_queue, merge_pmap_results, create_results_file, update_results_file, concatenate_results!, serialise_queue!, push_nqcd_outputs!
 
 end
