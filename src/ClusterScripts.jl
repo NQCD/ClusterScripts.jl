@@ -169,7 +169,7 @@ function create_results_file(output_filename::String, glob_pattern::String, queu
     return reshape(output_tensor, size(simulation_parameters["parameters"]))
 end
 
-function update_results_file(input_file::String, glob_pattern::String, queue_file::String, output_file::Srting; trajectories_key="trajectories", save=true)
+function update_results_file(input_file::String, glob_pattern::String, queue_file::String, output_file::String; trajectories_key="trajectories", save=true)
     simulation_parameters=jldopen(queue_file)
     # Create an empty total output object
     output_tensor=jldopen(input_file)["results"]
@@ -202,7 +202,7 @@ function concatenate_results!(results_container, glob_pattern::String, queue_fil
                 end
                 # Remove job id from parameters once that result has been added
                 jobid=parse(Int, split(all_files[file_index].name, "_")[end])
-                deleteat!(results_container[index][2]["job_ids"], findall(results_container[index][2]["job_ids"] .== jobid))
+                deleteat!(results_container[index][2]["job_ids"], findall(results_container[index][2]["job_ids"] .== jobid)...)
             catch
                 @warn "File $(all_files[file_index].name) could not be read. It may be incomplete or corrupted."
                 continue
