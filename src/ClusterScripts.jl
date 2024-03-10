@@ -138,7 +138,7 @@ function merge_pmap_results(simulation_output::AbstractArray;trajectories_key="t
 end
 
 """
-    merge_file_results(output_filename::String, glob_pattern::String, queue_file::String;trajectories_key="trajectories", truncate_times=true)
+    create_results_file(output_filename::String, glob_pattern::String, queue_file::String;trajectories_key="trajectories", truncate_times=true)
 
 Compresses all results from a simulation queue back into a single file. Any missing outputs are reported as warnings and will be undefined in the final output. 
 
@@ -160,29 +160,49 @@ This file contains the results of all jobs in the queue, as well as the input pa
 
 `truncate_times::Bool`: If true, the time array in the output will be truncated to the final value only. Useful to save space when a large number of identical trajectories are run with short time steps. 
 """
-function merge_file_results(output_filename::String, glob_pattern::String, queue_file::String;trajectories_key="trajectories", truncate_times=true, save=true)
-    # Make a struct for common file actions
+function create_results_file(output_filename::String, glob_pattern::String, queue_file::String;trajectories_key="trajectories", save=true)
+    simulation_parameters=jldopen(queue_file)
+    # Create an empty total output object
+    output_tensor=Array{Tuple}(undef, (size(simulation_parameters["parameters"])))
+    concatenate_results!(output_tensor, glob_pattern, queue_file; trajectories_key=trajectories_key)
+    save ? jldsave(output_filename, compress=true; results=reshape(output_tensor, size(simulation_parameters["parameters"]))) : nothing
+    return reshape(output_tensor, size(simulation_parameters["parameters"]))
+end
+
+function update_results_file(input_file::String, glob_pattern::String, queue_file::String, output_file::Srting; trajectories_key="trajectories", save=true)
+    simulation_parameters=jldopen(queue_file)
+    # Create an empty total output object
+    output_tensor=jldopen(input_file)["results"]
+    concatenate_results!(output_tensor, glob_pattern, queue_file; trajectories_key=trajectories_key)
+    save ? jldsave(output_file, compress=true; results=output_tensor) : nothing
+    return reshape(output_tensor, size(simulation_parameters["parameters"]))
+end
+
+function concatenate_results!(results_container, glob_pattern::String, queue_file::String; trajectories_key="trajectories")
     # Read in all files for a simulation queue.
     all_files=map(SimulationFile,glob(glob_pattern))
     progress=ProgressBar(total=length(all_files), printing_delay=1.0)
     set_description(progress, "Processing files: ")
     # Import simulation parameters
     simulation_parameters=jldopen(queue_file)
-    # Create an empty total output object
-    output_tensor=Array{Tuple}(undef, (size(simulation_parameters["parameters"])))
     # Go through each element in the input tensor and collect all jobs we have for it. 
     for index in eachindex(simulation_parameters["parameters"])
-        to_read=findall(x->split(x.name, "_")[end] in map(string,simulation_parameters["parameters"][index]["job_ids"]), all_files)
+        # Read job ids from results if possible to avoid reading duplicates. 
+        job_ids=!isassigned(results_container, index) ? simulation_parameters["parameters"][index]["job_ids"] : results_container[index][2]["job_ids"]
+        to_read=findall(x->split(x.name, "_")[end] in string.(job_ids), all_files)
         for file_index in to_read
             try
                 file_results=jldopen(all_files[file_index].path)["results"]
                 @debug "File read successfully"
                 # Move data to the output tensor
-                if !isassigned(output_tensor, index)
-                    output_tensor[index]=file_results
+                if !isassigned(results_container, index)
+                    results_container[index]=file_results
                 else
-                    output_tensor[index]=push_nqcd_outputs!(output_tensor[index], [file_results]; trajectories_key=trajectories_key)
+                    results_container[index]=push_nqcd_outputs!(results_container[index], [file_results]; trajectories_key=trajectories_key)
                 end
+                # Remove job id from parameters once that result has been added
+                jobid=parse(Int, split(all_files[file_index].name, "_")[end])
+                deleteat!(results_container[index][2]["job_ids"], findall(results_container[index][2]["job_ids"] .== jobid))
             catch
                 @warn "File $(all_files[file_index].name) could not be read. It may be incomplete or corrupted."
                 continue
@@ -190,12 +210,10 @@ function merge_file_results(output_filename::String, glob_pattern::String, queue
             update(progress)
         end
         # Trajectory completeness check
-        if !isassigned(output_tensor, index) || output_tensor[index][2]["total_trajectories"]!=output_tensor[index][2]["trajectories"]
+        if !isassigned(results_container, index) || results_container[index][2]["total_trajectories"]!=results_container[index][2]["trajectories"]
             @info "Simulation results are incomplete or oversubscribed in results[$(index)]. Make sure you have run all sub-jobs. "
         end
     end
-    save ? jldsave(output_filename, compress=true; results=reshape(output_tensor, size(simulation_parameters["parameters"]))) : nothing
-    return reshape(output_tensor, size(simulation_parameters["parameters"]))
 end
 
 """
