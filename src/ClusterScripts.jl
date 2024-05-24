@@ -50,4 +50,6 @@ export pmap_queue, merge_pmap_results
 include("file_based.jl")
 export build_job_queue, create_results_file, update_results_file, update_results_file!, serialise_queue!, save!
 
+include("csv_out.jl")
+
 end

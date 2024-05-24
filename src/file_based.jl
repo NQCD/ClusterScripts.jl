@@ -4,7 +4,10 @@
 """
     save!(loader::ResultsLazyLoader)
 
+**Warning: Don't run this on an unstable system or network connection to prevent data loss!**
+
 Updates the stored parameters and derived quantities inside a grouped JLD2 file.
+
 Run this function after modifying `loader.parameters` or `loader.derived_quantities` to save the changes.
 """
 function save!(loader::ResultsLazyLoader)
