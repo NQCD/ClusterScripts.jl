@@ -18,7 +18,7 @@ function create_results_file(output_filename::String, glob_pattern::String, queu
                 file_results = jldopen(all_files[file_index].path)["results"]
                 @debug "File read successfully"
                 # Columns to write out
-                output_columns = Symbol[:job_id, :parameters_set]
+                output_columns = [:job_id, :parameters_set]
                 for (k,v) in file_results[1]
                     # Only make entries for non-vector outputs. (Number, Bool, String are OK)
                     !isa(v, AbstractArray) : push!(output_columns, k) : nothing
