@@ -1,9 +1,14 @@
 using CSV, DataFrames
 
-function create_results_file(output_filename::String, glob_pattern::String, queue_file::String)
+function create_csv_file(output_filename::String, glob_pattern::String, queue_file::String)
+    # Create an empty output CSV
+    output_dataframe = DataFrame(job_id=Int[], parameters_set=Int[])
+    return update_csv_file(output_filename, output_dataframe, glob_pattern, queue_file)
+end
+
+function update_csv_file!(output_filename::String, input_file::DataFrame, glob_pattern::String, queue_file::String)
     simulation_parameters = jldopen(queue_file)
     # Create an empty output CSV
-    output_dataframe = DataFrame(job_id = Int[], parameters_set=Int[])
     # Concatenate results
     glob_pattern = SimulationFile(glob_pattern)
     all_files = map(SimulationFile, glob(glob_pattern.with_extension, glob_pattern.stem))
@@ -19,14 +24,14 @@ function create_results_file(output_filename::String, glob_pattern::String, queu
                 @debug "File read successfully"
                 # Columns to write out
                 output_columns = [:job_id, :parameters_set]
-                for (k,v) in file_results[1]
+                for (k, v) in file_results[1]
                     # Only make entries for non-vector outputs. (Number, Bool, String are OK)
-                    !isa(v, AbstractArray) : push!(output_columns, k) : nothing
+                    !isa(v, AbstractArray):push!(output_columns, k):nothing
                 end
                 # Collect output values
                 output_values = Any[]
-                all_jobids = isa(file_results[2]["job_id"], Vector) ? file_results[2]["job_id"] : [file_results[2]["job_id"]
-                new_jobids = findall(x ->!(x in output_dataframe.job_id), all_jobids)
+                all_jobids = isa(file_results[2]["job_id"], Vector) ? file_results[2]["job_id"] : [file_results[2]["job_id"]]
+                new_jobids = findall(x -> !(x in input_file.job_id), all_jobids)
                 push!(output_values, jobid[new_jobids])
                 parameter_set = fill(index, length(new_jobids))
                 push!(output_values, parameter_set)
@@ -35,10 +40,12 @@ function create_results_file(output_filename::String, glob_pattern::String, queu
                     push!(output_values, getindex.(file_results[1][new_jobids], column))
                 end
                 # Add to Dataframe
-                vcat(output_dataframe, DataFrame([i => j for (i,j) in zip(output_columns, output_values)]))
-                end
+                input_file = vcat(input_file, DataFrame([i => j for (i, j) in zip(output_columns, output_values)]), cols=:union)
+            catch e
+                @warn "Error reading file: $e"
             end
             update(progress)
         end
-    CSV.write(output_filename, output_dataframe)
+    end
+    CSV.write(output_filename, input_file)
 end

@@ -51,5 +51,6 @@ include("file_based.jl")
 export build_job_queue, create_results_file, update_results_file, update_results_file!, serialise_queue!, save!
 
 include("csv_out.jl")
+export create_csv_file, update_csv_file!
 
 end
