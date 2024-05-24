@@ -3,7 +3,7 @@ using CSV, DataFrames
 function create_csv_file(output_filename::String, glob_pattern::String, queue_file::String)
     # Create an empty output CSV
     output_dataframe = DataFrame(job_id=Int[], parameters_set=Int[])
-    return update_csv_file(output_filename, output_dataframe, glob_pattern, queue_file)
+    return update_csv_file!(output_filename, output_dataframe, glob_pattern, queue_file)
 end
 
 function update_csv_file!(output_filename::String, input_file::DataFrame, glob_pattern::String, queue_file::String)
