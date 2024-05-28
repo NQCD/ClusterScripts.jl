@@ -19,31 +19,31 @@ function update_csv_file!(output_filename::String, input_file::DataFrame, glob_p
         job_ids = simulation_parameters["parameters"][index]["job_ids"]
         to_read = findall(x -> split(x.name, "_")[end] in string.(job_ids), all_files)
         for file_index in to_read
-            try
-                file_results = jldopen(all_files[file_index].path)["results"]
-                @debug "File read successfully"
-                # Columns to write out
-                output_columns = [:job_id, :parameters_set]
-                for (k, v) in file_results[1]
-                    # Only make entries for non-vector outputs. (Number, Bool, String are OK)
-                    !isa(v, AbstractArray):push!(output_columns, k):nothing
-                end
-                # Collect output values
-                output_values = Any[]
-                all_jobids = isa(file_results[2]["job_id"], Vector) ? file_results[2]["job_id"] : [file_results[2]["job_id"]]
-                new_jobids = findall(x -> !(x in input_file.job_id), all_jobids)
-                push!(output_values, jobid[new_jobids])
-                parameter_set = fill(index, length(new_jobids))
-                push!(output_values, parameter_set)
-                sizehint!(output_values, length(output_columns))
-                for column in output_columns[2:end] #excluding job_id and parameters_set
-                    push!(output_values, getindex.(file_results[1][new_jobids], column))
-                end
-                # Add to Dataframe
-                input_file = vcat(input_file, DataFrame([i => j for (i, j) in zip(output_columns, output_values)]), cols=:union)
-            catch e
-                @warn "Error reading file: $e"
+            #try
+            file_results = jldopen(all_files[file_index].path)["results"]
+            @debug "File read successfully"
+            # Columns to write out
+            output_columns = [:job_id, :parameters_set]
+            for (k, v) in file_results[1]
+                # Only make entries for non-vector outputs. (Number, Bool, String are OK)
+                !isa(v, AbstractArray):push!(output_columns, k):nothing
             end
+            # Collect output values
+            output_values = Any[]
+            all_jobids = isa(file_results[2]["job_id"], Vector) ? file_results[2]["job_id"] : [file_results[2]["job_id"]]
+            new_jobids = findall(x -> !(x in input_file.job_id), all_jobids)
+            push!(output_values, jobid[new_jobids])
+            parameter_set = fill(index, length(new_jobids))
+            push!(output_values, parameter_set)
+            sizehint!(output_values, length(output_columns))
+            for column in output_columns[2:end] #excluding job_id and parameters_set
+                push!(output_values, getindex.(file_results[1][new_jobids], column))
+            end
+            # Add to Dataframe
+            input_file = vcat(input_file, DataFrame([i => j for (i, j) in zip(output_columns, output_values)]), cols=:union)
+            #catch e
+            @warn "Error reading file: $e"
+            #end
             update(progress)
         end
     end
