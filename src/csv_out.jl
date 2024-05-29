@@ -51,6 +51,26 @@ function update_csv_file!(output_filename::String, input_file::DataFrame, glob_p
     CSV.write(output_filename, input_file)
 end
 
+function results_array_to_dataframe(output_dicts::Vector, params_dict::Dict; params_index=missing)
+    output_dataframe = DataFrame(job_id=Int[], parameters_set=Int[])
+    output_columns = [:job_id, :parameters_set]
+    for (k, v) in pairs(output_dicts[1])
+        # Only make entries for non-vector outputs. (Number, Bool, String are OK)
+        !isa(v, AbstractArray) ? push!(output_columns, k) : nothing
+    end
+    # Collect output values
+    output_values = Any[]
+    sizehint!(output_values, length(output_columns))
+    parameter_set = fill(params_index, length(output_dicts))
+    push!(output_values, parameter_set)
+    for column in output_columns[3:end] #excluding job_id and parameters_set
+        col_values = getindex.(output_dicts, column)
+        push!(output_values, replace(col_values, nothing => missing))
+    end
+    # Add to Dataframe
+    output_dataframe = vcat(output_dataframe, DataFrame([i => j for (i, j) in zip(output_columns, output_values)]), cols=:union)
+end
+
 function jld2_ungrouped_to_csv(csv_output::String, jld2_input::String)
     jld2_results = jldopen(jld2_input)["results"]
     output_dataframe = DataFrame(job_id=Int[], parameters_set=Int[])
