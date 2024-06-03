@@ -13,7 +13,7 @@ function concatenate_results!(results_container::AbstractArray, glob_pattern::St
     for index in eachindex(simulation_parameters["parameters"])
         # Read job ids from results if possible to avoid reading duplicates.
         job_ids = !isassigned(results_container, index) ? simulation_parameters["parameters"][index]["job_ids"] : results_container[index][2]["job_ids"]
-        to_read = findall(x -> split(x.name, "_")[end] in string.(job_ids), all_files)
+        to_read = findall(x -> parse(Int, split(x.name, "_")[end]) in job_ids, all_files)
         for file_index in to_read
             try
                 file_results = jldopen(all_files[file_index].path)["results"]
@@ -55,7 +55,7 @@ function concatenate_results!(results_container::ResultsLazyLoader, glob_pattern
         data_to_append = []
         trajectories_read = 0
         ids_read = Int[]
-        to_read = findall(x -> split(x.name, "_")[end] in string.(job_ids), all_files)
+        to_read = findall(x -> Parse(Int, split(x.name, "_")[end]) in job_ids, all_files)
         sizehint!(data_to_append, length(to_read))
         sizehint!(ids_read, length(to_read))
         for file_index in to_read
