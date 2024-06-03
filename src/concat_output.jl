@@ -12,7 +12,7 @@ function concatenate_results!(results_container::AbstractArray, glob_pattern::St
     # Go through each element in the input tensor and collect all jobs we have for it.
     for index in eachindex(simulation_parameters["parameters"])
         # Read job ids from results if possible to avoid reading duplicates.
-        job_ids = !isassigned(results_container, index) ? simulation_parameters["parameters"][index]["job_ids"] : container[index][2]["job_ids"]
+        job_ids = !isassigned(results_container, index) ? simulation_parameters["parameters"][index]["job_ids"] : results_container[index][2]["job_ids"]
         to_read = findall(x -> split(x.name, "_")[end] in string.(job_ids), all_files)
         for file_index in to_read
             try
