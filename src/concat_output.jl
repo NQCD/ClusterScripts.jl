@@ -13,8 +13,7 @@ function concatenate_results!(results_container::AbstractArray, glob_pattern::St
     for index in eachindex(simulation_parameters["parameters"])
         # Read job ids from results if possible to avoid reading duplicates.
         job_ids = !isassigned(results_container, index) ? simulation_parameters["parameters"][index]["job_ids"] : results_container[index][2]["job_ids"]
-        to_read = findall(x -> parse(Int, split(x.name, "_")[end]) in job_ids, all_files)
-        for file_index in to_read
+        for file_index in all_files
             try
                 file_results = jldopen(all_files[file_index].path)["results"]
                 @debug "File read successfully"
@@ -25,7 +24,7 @@ function concatenate_results!(results_container::AbstractArray, glob_pattern::St
                     results_container[index] = push_nqcd_outputs!(results_container[index], [file_results]; trajectories_key=trajectories_key)
                 end
                 # Remove job id from parameters once that result has been added
-                jobid = parse(Int, split(all_files[file_index].name, "_")[end])
+                jobid = parse(Int, file_results[2]["jobid"])
                 deleteat!(results_container[index][2]["job_ids"], findall(results_container[index][2]["job_ids"] .== jobid)...)
             catch
                 @warn "File $(all_files[file_index].name) could not be read. It may be incomplete or corrupted."
