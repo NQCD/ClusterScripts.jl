@@ -18,7 +18,7 @@ function concatenate_results!(results_container::AbstractArray, glob_pattern::St
                 file_results = jldopen(all_files[file_index].path)["results"]
                 @debug "File read successfully"
                 # Move data to the output tensor
-                jobid = parse(Int, file_results[2]["jobid"])
+                jobid = file_results[2]["jobid"]
                 if !isassigned(results_container, index)
                     results_container[index] = file_results
                     jobid = parse(Int, file_results[2]["jobid"])
