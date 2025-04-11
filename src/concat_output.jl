@@ -18,14 +18,19 @@ function concatenate_results!(results_container::AbstractArray, glob_pattern::St
                 file_results = jldopen(all_files[file_index].path)["results"]
                 @debug "File read successfully"
                 # Move data to the output tensor
+                jobid = parse(Int, file_results[2]["jobid"])
                 if !isassigned(results_container, index)
                     results_container[index] = file_results
+                    jobid = parse(Int, file_results[2]["jobid"])
+                    deleteat!(results_container[index][2]["job_ids"], findall(results_container[index][2]["job_ids"] .== jobid)...)
                 else
-                    results_container[index] = push_nqcd_outputs!(results_container[index], [file_results]; trajectories_key=trajectories_key)
+                    if jobid ∉ results_container[index][2]["job_ids"]
+                        results_container[index] = push_nqcd_outputs!(results_container[index], [file_results]; trajectories_key=trajectories_key)
+                        jobid = parse(Int, file_results[2]["jobid"])
+                        deleteat!(results_container[index][2]["job_ids"], findall(results_container[index][2]["job_ids"] .== jobid)...)
+                    end
                 end
                 # Remove job id from parameters once that result has been added
-                jobid = parse(Int, file_results[2]["jobid"])
-                deleteat!(results_container[index][2]["job_ids"], findall(results_container[index][2]["job_ids"] .== jobid)...)
             catch
                 @warn "File $(all_files[file_index].name) could not be read. It may be incomplete or corrupted."
                 continue
