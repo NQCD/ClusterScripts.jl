@@ -29,8 +29,9 @@ function concatenate_results!(results_container::AbstractArray, glob_pattern::St
                     end
                 end
                 # Remove job id from parameters once that result has been added
-            catch
-                @warn "File $(all_files[file_index].name) could not be read. It may be incomplete or corrupted."
+            catch e
+                @warn "File $(all_files[file_index].name) could not be read. It may be incomplete or corrupted." 
+                @debug "Concatenation logic failed due to the following error" error = e
                 continue
             end
             update(progress)
