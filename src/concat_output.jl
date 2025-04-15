@@ -10,37 +10,47 @@ function concatenate_results!(results_container::AbstractArray, glob_pattern::St
     # Import simulation parameters
     simulation_parameters = jldopen(queue_file)
     # Go through each element in the input tensor and collect all jobs we have for it.
-    for index in eachindex(simulation_parameters["parameters"])
-        # Read job ids from results if possible to avoid reading duplicates.
-        job_ids = !isassigned(results_container, index) ? simulation_parameters["parameters"][index]["job_ids"] : results_container[index][2]["job_ids"]
-        for file_index in eachindex(all_files)
-            try
-                file_results = jldopen(all_files[file_index].path)["results"]
-                @debug "File read successfully"
-                # Move data to the output tensor
-                jobid = file_results[2]["jobid"]
-                if !isassigned(results_container, index)
-                    results_container[index] = file_results
-                    symdiff!(results_container[index][2]["job_ids"], jobid)
+    all_job_ids = get.(simulation_parameters["parameters"], "job_ids", Int[])
+    for file_index in eachindex(all_files)
+        try
+            file_results = jldopen(all_files[file_index].path)["results"]
+            @debug "File read successfully"
+            # Move data to the output tensor
+            jobid = file_results[2]["jobid"]
+            parameter_index = findfirst(jobid .∈ all_job_ids)
+            if !isnothing(parameter_index)
+                if !isassigned(results_container, parameter_index)
+                    results_container[parameter_index] = file_results
+                    symdiff!(results_container[parameter_index][2]["job_ids"], jobid)
                 else
-                    if jobid ∉ results_container[index][2]["job_ids"]
-                        results_container[index] = push_nqcd_outputs!(results_container[index], [file_results]; trajectories_key=trajectories_key)
-                        symdiff!(results_container[index][2]["job_ids"], jobid)
+                    if jobid ∉ results_container[parameter_index][2]["job_ids"]
+                        results_container[parameter_index] = push_nqcd_outputs!(results_container[parameter_index], [file_results]; trajectories_key=trajectories_key)
+                        symdiff!(results_container[parameter_index][2]["job_ids"], jobid)
                     end
                 end
-                # Remove job id from parameters once that result has been added
-            catch e
-                @warn "File $(all_files[file_index].name) could not be read. It may be incomplete or corrupted." 
-                @debug "Concatenation logic failed due to the following error" error = e
-                continue
+            else
+                @error "Couldn't find a job ID for this file - Was the correct parameters file selected?"
             end
-            update(progress)
+            # Remove job id from parameters once that result has been added
+        catch e
+            @warn "File $(all_files[file_index].name) could not be read. It may be incomplete or corrupted." 
+            @debug "Concatenation logic failed due to the following error" error = e
+            continue
         end
-        # Trajectory completeness check
-        if !isassigned(results_container, index) || results_container[index][2]["total_trajectories"] != results_container[index][2]["trajectories"]
-            @info "Simulation results are incomplete or oversubscribed in results[$(index)]. Make sure you have run all sub-jobs. "
+        update(progress)
+    end
+    # Trajectory completeness check
+    parameter_sets = []
+    completeness = Float64[]
+    for idx in eachindex(results_container)
+        push!(parameter_sets, idx)
+        if isassigned(results_container, idx)
+            push!(completeness, length(results_container[idx][2]["job_ids"]) / length(simulation_parameters["parameters"][idx]["job_ids"]))
+        else
+            push!(completeness, 0.0)
         end
     end
+    UnicodePlots.barplot(parameter_sets, completeness; title = "Completeness of results file")
 end
 
 function concatenate_results!(results_container::ResultsLazyLoader, glob_pattern::String, queue_file::String; trajectories_key="trajectories")
@@ -58,7 +68,7 @@ function concatenate_results!(results_container::ResultsLazyLoader, glob_pattern
         data_to_append = []
         trajectories_read = 0
         ids_read = Int[]
-        to_read = findall(x -> Parse(Int, split(x.name, "_")[end]) in job_ids, all_files)
+        to_read = findall(x -> parse(Int, split(x.name, "_")[end]) in job_ids, all_files)
         sizehint!(data_to_append, length(to_read))
         sizehint!(ids_read, length(to_read))
         for file_index in to_read
@@ -101,8 +111,7 @@ end
 """
     push_nqcd_outputs!!(first_output, other_outputs...)
 
-    Like a push!() function, but it also puts `first_output` into a vector if it wasn't already and adds the number of trajectories together.
-TBW
+Like a push!() function, but it also puts `first_output` into a vector if it wasn't already and adds the number of trajectories together.
 """
 function push_nqcd_outputs!(first_output, other_outputs; trajectories_key="trajectories")
     for i in other_outputs
