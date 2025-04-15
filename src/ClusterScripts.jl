@@ -7,6 +7,7 @@ using JLD2
 using RobustPmap
 using Glob
 using ProgressBars
+import UnicodePlots
 
 """
 Struct to hold file paths and provide some basic functionality for working with them.
