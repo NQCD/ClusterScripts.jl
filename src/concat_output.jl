@@ -22,11 +22,9 @@ function concatenate_results!(results_container::AbstractArray, glob_pattern::St
                 if !isassigned(results_container, parameter_index)
                     results_container[parameter_index] = file_results
                     symdiff!(results_container[parameter_index][2]["job_ids"], jobid)
-                else
-                    if jobid ∉ results_container[parameter_index][2]["job_ids"]
-                        results_container[parameter_index] = push_nqcd_outputs!(results_container[parameter_index], [file_results]; trajectories_key=trajectories_key)
-                        symdiff!(results_container[parameter_index][2]["job_ids"], jobid)
-                    end
+                elseif jobid ∈ results_container[parameter_index][2]["job_ids"]
+                    results_container[parameter_index] = push_nqcd_outputs!(results_container[parameter_index], [file_results]; trajectories_key=trajectories_key)
+                    symdiff!(results_container[parameter_index][2]["job_ids"], jobid)
                 end
             else
                 @error "Couldn't find a job ID for this file - Was the correct parameters file selected?"
