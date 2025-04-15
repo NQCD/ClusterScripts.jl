@@ -10,7 +10,7 @@ function concatenate_results!(results_container::AbstractArray, glob_pattern::St
     # Import simulation parameters
     simulation_parameters = jldopen(queue_file)
     # Go through each element in the input tensor and collect all jobs we have for it.
-    all_job_ids = [get(simulation_parameters["parameters"][idx], "job_ids", Int[]) for idx in simulation_parameters["parameters"]]
+    all_job_ids = [get(simulation_parameters["parameters"][idx], "job_ids", Int[]) for idx in eachindex(simulation_parameters["parameters"])]
     for file_index in eachindex(all_files)
         try
             file_results = jldopen(all_files[file_index].path)["results"]
