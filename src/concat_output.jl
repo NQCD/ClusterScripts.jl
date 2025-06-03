@@ -25,11 +25,13 @@ function concatenate_results!(
             file_results = jldopen(all_files[file_index].path)["results"]
             # Move data to the output tensor
             if job_id_source == :filename
-                jobid =
+                jobid = parse(
+                    Int,
                     match(
                         r"-\d*-(\d*).jld2",
                         all_files[file_index].with_extension,
-                    ).captures |> first
+                    ).captures |> first,
+                )
             elseif job_id_source == :in_dict
                 jobid = file_results[2]["jobid"]
             end
