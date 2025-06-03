@@ -171,7 +171,7 @@ function create_results_file(
         glob_pattern,
         queue_file;
         trajectories_key = trajectories_key,
-        job_id_source::Symbol = job_id_source,
+        job_id_source = job_id_source,
     )
     if file_format == "jld2"
         save_as_jld2(
