@@ -6,7 +6,7 @@ function concatenate_results!(
     glob_pattern::String,
     queue_file::String;
     trajectories_key = "trajectories",
-    job_id_source::Symbol = :filename,
+    job_id_source = :filename,
 )
     # Read in all files for a simulation queue.
     glob_pattern = SimulationFile(glob_pattern)
