@@ -1,4 +1,4 @@
-# Sherlock.jl
+# ClusterScripts.jl
 
 [![Build Status](https://github.com/alexsp32/ClusterScripts.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/alexsp32/ClusterScripts.jl/actions/workflows/CI.yml?query=branch%3Amain)
 
@@ -8,7 +8,7 @@ While NQCDynamics.jl provides the tools necessary to run ensemble simulations, a
 
 To maximise compatibility with (almost) any simulation workflow, it is up to you as a user to implement the necessary functions acting on the jobs dispatched by ClusterScripts. 
 
-## The Sherlock simulation workflow
+## The ClusterScripts simulation workflow
 All the information necessary to run a simulation is contained in Dictionaries. 
 `fixed_parameters` contains all keys common to every simulation. 
 `variables` should contain variable keys with the desired vector of values. 
