@@ -41,3 +41,5 @@ This allows for grid searches over multiple parameters, which could be used to c
 
 % explain how to aggregate file-based results back into a single file.
 % explain how the LazyLoader saves memory and load time.
+
+For large queues, results can also be collected into a queryable SQLite database, see [Results database (SQLite)](@ref).

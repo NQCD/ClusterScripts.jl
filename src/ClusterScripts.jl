@@ -8,6 +8,10 @@ using RobustPmap
 using Glob
 using ProgressBars
 import UnicodePlots
+using DataFrames
+import SQLite, DBInterface, JSON, RecursiveArrayTools, Serialization, Dates
+using CodecZstd: ZstdCompressor, ZstdDecompressor
+using SHA: sha256
 
 """
 Struct to hold file paths and provide some basic functionality for working with them.
@@ -43,6 +47,8 @@ struct ResultsLazyLoader
 end
 export ResultsLazyLoader
 
+include("job_ids.jl")
+
 include("concat_output.jl")
 
 include("pmap.jl")
@@ -53,5 +59,13 @@ export build_job_queue, create_results_file, update_results_file, update_results
 
 include("csv_out.jl")
 export create_csv_file, update_csv_file!
+
+include("database/codec.jl")
+include("database/schema.jl")
+include("database/ingest.jl")
+include("database/query.jl")
+export create_results_database, write_results_shard, merge_shards!
+export ResultsDB, parameters, scalars, ensemble_summary, load_output, each_output, load_trajectory,
+    to_results_array, completeness
 
 end
