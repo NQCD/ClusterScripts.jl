@@ -3,6 +3,10 @@ using Distributed
 using Test
 using DiffEqBase
 
+# The database tests are self-contained and run first, so problems in the legacy tests below
+# (which use `addprocs` and `jldopen` without importing JLD2) cannot mask them.
+include("database.jl")
+
 @testset "ClusterScripts.jl" begin
     # Write your tests here.
     test_parameters=Dict{String,Any}(

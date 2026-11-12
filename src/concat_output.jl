@@ -9,44 +9,30 @@ function concatenate_results!(
     job_id_source = :filename,
 )
     # Read in all files for a simulation queue.
-    glob_pattern = SimulationFile(glob_pattern)
-    all_files = map(SimulationFile, glob(glob_pattern.with_extension, glob_pattern.stem))
+    all_files = glob_files(glob_pattern)
     progress = ProgressBar(total = length(all_files), printing_delay = 1.0)
     set_description(progress, "Processing files: ")
     # Import simulation parameters
     simulation_parameters = jldopen(queue_file)
-    # Go through each element in the input tensor and collect all jobs we have for it.
-    all_job_ids = [
-        get(simulation_parameters["parameters"][idx], "job_ids", Int[]) for
-        idx in eachindex(simulation_parameters["parameters"])
-    ]
+    # Look up which parameter set each job belongs to.
+    job_to_set = jobid_to_set(simulation_parameters["parameters"])
     for file_index in eachindex(all_files)
         try
-            file_results = jldopen(all_files[file_index].path)["results"]
+            file_results = jldopen(f -> f["results"], all_files[file_index].path, "r")
             # Move data to the output tensor
-            if job_id_source == :filename
-                jobid = parse(
-                    Int,
-                    match(
-                        r"-\d*-(\d*).jld2",
-                        all_files[file_index].with_extension,
-                    ).captures |> first,
-                )
-            elseif job_id_source == :in_dict
-                jobid = file_results[2]["jobid"]
-            end
-            parameter_index = findfirst(jobid .∈ all_job_ids)
+            jobids = resolve_job_ids(all_files[file_index], file_results, job_id_source)
+            parameter_index = get(job_to_set, first(jobids), nothing)
             if !isnothing(parameter_index)
                 if !isassigned(results_container, parameter_index)
                     results_container[parameter_index] = file_results
-                    symdiff!(results_container[parameter_index][2]["job_ids"], jobid)
-                elseif jobid ∈ results_container[parameter_index][2]["job_ids"]
+                    setdiff!(results_container[parameter_index][2]["job_ids"], jobids)
+                elseif any(in(results_container[parameter_index][2]["job_ids"]), jobids)
                     results_container[parameter_index] = push_nqcd_outputs!(
                         results_container[parameter_index],
                         [file_results];
                         trajectories_key = trajectories_key,
                     )
-                    symdiff!(results_container[parameter_index][2]["job_ids"], jobid)
+                    setdiff!(results_container[parameter_index][2]["job_ids"], jobids)
                 end
             else
                 @error "Couldn't find a job ID for this file - Was the correct parameters file selected?"
@@ -88,8 +74,7 @@ function concatenate_results!(
     trajectories_key = "trajectories",
 )
     # Read in all files for a simulation queue.
-    glob_pattern = SimulationFile(glob_pattern)
-    all_files = map(SimulationFile, glob(glob_pattern.with_extension, glob_pattern.stem))
+    all_files = glob_files(glob_pattern)
     progress = ProgressBar(total = length(all_files), printing_delay = 1.0)
     set_description(progress, "Processing files: ")
     # Import simulation parameters
@@ -101,7 +86,7 @@ function concatenate_results!(
         data_to_append = []
         trajectories_read = 0
         ids_read = Int[]
-        to_read = findall(x -> parse(Int, split(x.name, "_")[end]) in job_ids, all_files)
+        to_read = findall(x -> job_id_from_filename(x) in job_ids, all_files)
         sizehint!(data_to_append, length(to_read))
         sizehint!(ids_read, length(to_read))
         for file_index in to_read
@@ -115,7 +100,7 @@ function concatenate_results!(
                 # Update trajectory count
                 trajectories_read += file_results[2][trajectories_key]
                 # Update job ids processed
-                push!(ids_read, parse(Int, split(all_files[file_index].name, "_")[end]))
+                push!(ids_read, job_id_from_filename(all_files[file_index]))
             catch e
                 throw
                 @warn "File $(all_files[file_index].name) could not be read. It may be incomplete or corrupted."

@@ -10,14 +10,13 @@ function update_csv_file!(output_filename::String, input_file::DataFrame, glob_p
     simulation_parameters = jldopen(queue_file)
     # Create an empty output CSV
     # Concatenate results
-    glob_pattern = SimulationFile(glob_pattern)
-    all_files = map(SimulationFile, glob(glob_pattern.with_extension, glob_pattern.stem))
+    all_files = glob_files(glob_pattern)
     progress = ProgressBar(total=length(all_files), printing_delay=1.0)
     set_description(progress, "Processing files: ")
     for index in eachindex(vec(simulation_parameters["parameters"]))
         # Read job ids from results if possible to avoid reading duplicates.
         job_ids = convert(Vector{Int64}, simulation_parameters["parameters"][index]["job_ids"])
-        to_read = findall(x -> parse(Int, split(x.name, "_")[end]) in job_ids, all_files)
+        to_read = findall(x -> job_id_from_filename(x) in job_ids, all_files)
         for file_index in to_read
             try
                 file_results = jldopen(all_files[file_index].path)["results"]

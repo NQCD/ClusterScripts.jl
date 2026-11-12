@@ -9,6 +9,7 @@ makedocs(
     modules=[ClusterScripts],
     pages=[
         "Home" => "index.md",
+        "Results database" => "database.md",
         "API" => "API.md"
     ]
 )
