@@ -4,7 +4,10 @@
 """
     save!(loader::ResultsLazyLoader)
 
+**Warning: Don't run this on an unstable system or network connection to prevent data loss!**
+
 Updates the stored parameters and derived quantities inside a grouped JLD2 file.
+
 Run this function after modifying `loader.parameters` or `loader.derived_quantities` to save the changes.
 """
 function save!(loader::ResultsLazyLoader)
@@ -31,7 +34,8 @@ function save!(loader::ResultsLazyLoader)
     @info "Saved updated data to $(loader.file.path)"
 end
 
-Base.show(io::IO, loader::ResultsLazyLoader) = print(io, "ResultsLazyLoader($(loader.file))")
+Base.show(io::IO, loader::ResultsLazyLoader) =
+    print(io, "ResultsLazyLoader($(loader.file))")
 Base.size(loader::ResultsLazyLoader) = size(loader.parameters)
 Base.length(loader::ResultsLazyLoader) = length(loader.parameters)
 function Base.getindex(loader::ResultsLazyLoader, i::Int)
@@ -62,7 +66,7 @@ function Base.setindex!(loader::ResultsLazyLoader, val, i::Int)
 end
 
 function save_as_jld2(filename, results_data)
-    jldsave(filename, compress=true; results=results_data)
+    jldsave(filename, compress = true; results = results_data)
 end
 
 """
@@ -72,20 +76,22 @@ Converts the results format of an ungrouped JLD2 file to the grouped format.
 **Warning: This method yields undefined simulation parameters which normally shouldn't occur in grouped JLD2 files.**
 """
 function convert_to_grouped_jld2(filename, results_data)
-    jldopen(filename, "w"; compress=true) do file
+    jldopen(filename, "w"; compress = true) do file
         # Flag file as grouped
         file["grouped"] = true
         # Need to modify out-of place.
         parameters = Array{Dict{String,Any}}(undef, size(results_data))
         # Store results in separate groups to load as required
-        indices_to_write = findall(x -> isassigned(results_data, x), eachindex(results_data))
+        indices_to_write =
+            findall(x -> isassigned(results_data, x), eachindex(results_data))
         for i in ProgressBar(indices_to_write)
             parameters[i] = results_data[i][2]
             file["results/$i"] = results_data[i][1]
         end
         # Create a group to store derived quantities
         file["parameters"] = parameters
-        file["derived_quantities"] = [Dict{Symbol,Any}() for i in eachindex(file["parameters"])]
+        file["derived_quantities"] =
+            [Dict{Symbol,Any}() for i in eachindex(file["parameters"])]
     end
 end
 
@@ -94,15 +100,21 @@ end
 
 Converts the results format of an ungrouped JLD2 file to the grouped format and adds the simulation parameters from a simulation queue.
 """
-function convert_to_grouped_jld2(filename, results_data, simulation_queue; trajectories_key="trajectories")
+function convert_to_grouped_jld2(
+    filename,
+    results_data,
+    simulation_queue;
+    trajectories_key = "trajectories",
+)
     simulation_parameters = jldopen(simulation_queue, "r")["parameters"]
-    jldopen(filename, "w"; compress=true) do file
+    jldopen(filename, "w"; compress = true) do file
         # Flag file as grouped
         file["grouped"] = true
         # Can't in-place modify arrays with JLD2, so need to modify out-of place.
         parameters = Array{Dict{String,Any}}(undef, size(results_data))
         # Store results in separate groups to load as required
-        indices_to_write = findall(x -> isassigned(results_data, x), eachindex(results_data))
+        indices_to_write =
+            findall(x -> isassigned(results_data, x), eachindex(results_data))
         for i in ProgressBar(indices_to_write)
             parameters[i] = results_data[i][2]
             file["results/$i"] = results_data[i][1]
@@ -115,7 +127,8 @@ function convert_to_grouped_jld2(filename, results_data, simulation_queue; traje
         end
         # Create a group to store derived quantities
         file["parameters"] = parameters
-        file["derived_quantities"] = [Dict{Symbol,Any}() for i in eachindex(file["parameters"])]
+        file["derived_quantities"] =
+            [Dict{Symbol,Any}() for i in eachindex(file["parameters"])]
     end
 end
 
@@ -142,15 +155,36 @@ This file contains the results of all jobs in the queue, as well as the input pa
 
 `truncate_times::Bool`: If true, the time array in the output will be truncated to the final value only. Useful to save space when a large number of identical trajectories are run with short time steps.
 """
-function create_results_file(output_filename::String, glob_pattern::String, queue_file::String; trajectories_key="trajectories", file_format::String="jld2")
+function create_results_file(
+    output_filename::String,
+    glob_pattern::String,
+    queue_file::String;
+    trajectories_key = "trajectories",
+    file_format::String = "jld2",
+    job_id_source::Symbol = :filename,
+)
     simulation_parameters = jldopen(queue_file)
     # Create an empty total output object
     output_tensor = Array{Tuple}(undef, (size(simulation_parameters["parameters"])))
-    concatenate_results!(output_tensor, glob_pattern, queue_file; trajectories_key=trajectories_key)
+    concatenate_results!(
+        output_tensor,
+        glob_pattern,
+        queue_file;
+        trajectories_key = trajectories_key,
+        job_id_source = job_id_source,
+    )
     if file_format == "jld2"
-        save_as_jld2(output_filename, reshape(output_tensor, size(simulation_parameters["parameters"])))
+        save_as_jld2(
+            output_filename,
+            reshape(output_tensor, size(simulation_parameters["parameters"])),
+        )
     elseif file_format == "jld2_grouped"
-        convert_to_grouped_jld2(output_filename, reshape(output_tensor, size(simulation_parameters["parameters"])), queue_file; trajectories_key=trajectories_key)
+        convert_to_grouped_jld2(
+            output_filename,
+            reshape(output_tensor, size(simulation_parameters["parameters"])),
+            queue_file;
+            trajectories_key = trajectories_key,
+        )
     end
     return reshape(output_tensor, size(simulation_parameters["parameters"]))
 end
@@ -171,19 +205,44 @@ Merges existing results from an **ungrouped JLD2 file** into a new **ungrouped J
 
 
 """
-function update_results_file(input_file::String, glob_pattern::String, queue_file::String, output_file::String; trajectories_key="trajectories", file_format::String="jld2")
+function update_results_file(
+    input_file::String,
+    glob_pattern::String,
+    queue_file::String,
+    output_file::String;
+    trajectories_key = "trajectories",
+    file_format::String = "jld2",
+    job_id_source::Symbol = :filename,
+)
     simulation_parameters = jldopen(queue_file)
     # Create an empty total output object
     output_tensor = jldopen(input_file)["results"]
-    concatenate_results!(output_tensor, glob_pattern, queue_file; trajectories_key=trajectories_key)
+    concatenate_results!(
+        output_tensor,
+        glob_pattern,
+        queue_file;
+        trajectories_key = trajectories_key,
+        job_id_source = job_id_source,
+    )
     if file_format == "jld2"
-        save_as_jld2(output_filename, output_tensor)
+        save_as_jld2(output_file, output_tensor)
     end
     return reshape(output_tensor, size(simulation_parameters["parameters"]))
 end
 
-function update_results_file!(input_file::ResultsLazyLoader, glob_pattern::String, queue_file::String; trajectories_key="trajectories", file_format::String="jld2")
-    concatenate_results!(input_file, glob_pattern, queue_file; trajectories_key=trajectories_key)
+function update_results_file!(
+    input_file::ResultsLazyLoader,
+    glob_pattern::String,
+    queue_file::String;
+    trajectories_key = "trajectories",
+    file_format::String = "jld2",
+)
+    concatenate_results!(
+        input_file,
+        glob_pattern,
+        queue_file;
+        trajectories_key = trajectories_key,
+    )
 end
 
 """
@@ -196,7 +255,16 @@ function build_job_queue(fixed_parameters::Dict, variables::Dict)
     merged_combinations = Vector{Dict}()
     variable_combinations = reshape(collect(Iterators.product(values(variables)...)), :)
     for i in eachindex(variable_combinations)
-        push!(merged_combinations, merge(fixed_parameters, Dict([(collect(keys(variables))[j], variable_combinations[i][j]) for j in 1:length(keys(variables))])))
+        push!(
+            merged_combinations,
+            merge(
+                fixed_parameters,
+                Dict([
+                    (collect(keys(variables))[j], variable_combinations[i][j]) for
+                    j = 1:length(keys(variables))
+                ]),
+            ),
+        )
     end
     return merged_combinations
 end
@@ -207,11 +275,24 @@ end
 Returns a Vector of all unique combinations of values in `variables` merged with `fixed_parameters`.
 By specifying a `postprocessing_function`, further actions can be performed each of the elements in the resulting vector.
 """
-function build_job_queue(fixed_parameters::Dict, variables::Dict, postprocessing_function::Function)
+function build_job_queue(
+    fixed_parameters::Dict,
+    variables::Dict,
+    postprocessing_function::Function,
+)
     merged_combinations = Vector{Dict}()
     variable_combinations = reshape(collect(Iterators.product(values(variables)...)), :)
     for i in eachindex(variable_combinations)
-        push!(merged_combinations, merge(fixed_parameters, Dict([(collect(keys(variables))[j], variable_combinations[i][j]) for j in 1:length(keys(variables))])))
+        push!(
+            merged_combinations,
+            merge(
+                fixed_parameters,
+                Dict([
+                    (collect(keys(variables))[j], variable_combinations[i][j]) for
+                    j = 1:length(keys(variables))
+                ]),
+            ),
+        )
     end
     # Accept a function that does in-place modification of the input parameters dictionary
     return map(postprocessing_function, merged_combinations)
@@ -228,17 +309,22 @@ Set "trajectories_key" in case jobs should be split by something different.
 
 Set "filename" to save the resulting batch queue somewhere different than `simulation_parameters.jld2`.
 """
-function serialise_queue!(input_dict_tensor::Vector{<:Dict{<:Any}}; trajectories_key="trajectories", filename="simulation_parameters.jld2")
+function serialise_queue!(
+    input_dict_tensor::Vector{<:Dict{<:Any}};
+    trajectories_key = "trajectories",
+    filename = "simulation_parameters.jld2",
+)
     queue = [] #Empty queue array to fill with views of input_dict_tensor
     job_id = 1
     for index in eachindex(input_dict_tensor)
         # Save a list of jobs created from an input dict within it.
         input_dict_tensor[index]["job_ids"] = []
         # Save the total number of trajectories before modification of the input dict to verify completeness on analysis.
-        input_dict_tensor[index]["total_trajectories"] = input_dict_tensor[index][trajectories_key]
+        input_dict_tensor[index]["total_trajectories"] =
+            input_dict_tensor[index][trajectories_key]
         if get!(input_dict_tensor[index], "batchsize", 1) == 1
             # Case 1: Fully serialised operation - Split into as many jobs as trajectories.
-            for trj in 1:input_dict_tensor[index][trajectories_key]
+            for trj = 1:input_dict_tensor[index][trajectories_key]
                 # Add a view of the input dict
                 push!(queue, view(input_dict_tensor, index))
                 push!(input_dict_tensor[index]["job_ids"], job_id)
@@ -248,19 +334,26 @@ function serialise_queue!(input_dict_tensor::Vector{<:Dict{<:Any}}; trajectories
         else
             # Case 2: Larger batch size - There might be some benefit like multithreading, so split into chunks of a certain size.
             # Work in batchsize chunks
-            input_dict_tensor[index][trajectories_key] = input_dict_tensor[index]["batchsize"]
+            input_dict_tensor[index][trajectories_key] =
+                input_dict_tensor[index]["batchsize"]
             # If there enough trajectories to fit in >1 batch:
-            for batch in 2:(floor(input_dict_tensor[index]["total_trajectories"] / input_dict_tensor[index]["batchsize"]))
+            for batch =
+                2:(floor(
+                input_dict_tensor[index]["total_trajectories"] /
+                input_dict_tensor[index]["batchsize"],
+            ))
                 push!(queue, view(input_dict_tensor, index))
                 push!(input_dict_tensor[index]["job_ids"], job_id)
                 job_id += 1
             end
             extra_parameters = copy(input_dict_tensor[index])
-            extra_parameters[trajectories_key] += input_dict_tensor[index]["total_trajectories"] % input_dict_tensor[index]["batchsize"]
+            extra_parameters[trajectories_key] +=
+                input_dict_tensor[index]["total_trajectories"] %
+                input_dict_tensor[index]["batchsize"]
             push!(queue, hcat(extra_parameters)) # This covers any cases where the number of trajectories isn't exactly divisible by the batch size.
             push!(input_dict_tensor[index]["job_ids"], job_id)
             job_id += 1
         end
     end
-    jldsave(filename; parameters=input_dict_tensor, queue=queue)
+    jldsave(filename; parameters = input_dict_tensor, queue = queue)
 end
